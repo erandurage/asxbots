@@ -6,6 +6,7 @@ from CommSecDefs import CommSec
 from selenium.webdriver.common.keys import Keys
 from bs4 import BeautifulSoup
 from CommonDefs import Fields
+from Password import *
 
 class Producer:
     def __init__(self, consumer_group, syncgroup):
@@ -83,8 +84,8 @@ class Producer:
     def run(self, dummy):
         
         self.browser.openURL(CommSec.HOME_URL)
-        self.browser.createAction(CommSec.CLIENT_ID).send_keys('56352429').send_keys(Keys.TAB)
-        self.browser.createAction(CommSec.PASSWORD).send_keys('Subotaei1!CSEC').send_keys(Keys.RETURN)
+        self.browser.createAction(CommSec.CLIENT_ID).send_keys(COMMSEC_USERNAME).send_keys(Keys.TAB)
+        self.browser.createAction(CommSec.PASSWORD).send_keys(COMMSEC_PASSWORD).send_keys(Keys.RETURN)
         print(self.browser.createAction(CommSec.ACCOUNT_DETAILS).get_text())
         
         for consumer in self.consumer_group:      
