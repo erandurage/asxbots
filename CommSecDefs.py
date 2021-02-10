@@ -13,3 +13,6 @@ class CommSec:
     STOCK_DETAILS_ITEM_SINGLE_FIELD ='//li[@class="stock-details__item ng-star-inserted"]'
     ORDER_BOOK = '//tr[@class="qr-table__row ng-star-inserted"]'
     REFRESH = '//button[@class="button button--clean header-button"]'
+    MD_SUMMARY_BUYERS = '//div[@class="p-1-2 market-depth__footer--left ng-star-inserted"]'
+    MD_SUMMARY_SELLERS = '//div[@class="p-1-2 market-depth__footer--right ng-star-inserted"]'
+    

@@ -15,6 +15,7 @@ class Producer:
         self.browser = BrowserWindow()
         
     def extract(self, consumer):
+        self.browser.createAction(CommSec.REFRESH).click()
         stock_summary = {}
         stock_summary[Fields.NAME] = ((self.browser.createAction(CommSec.INSTRUMENT_DETAILS).get_text().split('<'))[0]).strip()
         stock_summary[Fields.EXCHANGE_CODE] = self.browser.createAction(CommSec.EXCHANGE_CODE).get_text()
@@ -78,7 +79,9 @@ class Producer:
             stock_summary[Fields.ORDERBOOK]['SellSideQty'].append(tds[4].get_text())
             stock_summary[Fields.ORDERBOOK]['SellSidePrice'].append(tds[3].get_text())
         
-        print(stock_summary)
+        stock_summary[Fields.MD_SUMMARY_BUYERS] = self.browser.createAction(CommSec.MD_SUMMARY_BUYERS).get_text()
+        stock_summary[Fields.MD_SUMMARY_SELLERS] = self.browser.createAction(CommSec.MD_SUMMARY_SELLERS).get_text()
+#         print(stock_summary)
         return stock_summary
     
     def run(self, dummy):
@@ -91,6 +94,7 @@ class Producer:
         for consumer in self.consumer_group:      
             self.browser.openTab(CommSec.SECURITY_PARTIAL_URL.replace('___', consumer.seccode))
         
+
         while True:
             if self.security_group.flag.get() == 1:
                 print("Producer paused. Set flag to 0 to resume")

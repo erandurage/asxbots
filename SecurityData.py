@@ -20,22 +20,22 @@ class SecurityData:
         self.changes =[]
         
     def processUpdate(self, new):
-        retdiff = {}
+        diff = {}
         snapshot = {}
         if getSHA512Hash(json.dumps(self.snapshot)) == getSHA512Hash(json.dumps(new)):
-            print("No change")
+#             print("No change")
             return
         
         for key1 in self.snapshot:
             snapshot[key1] = self.snapshot[key1]
             if key1 in new and key1 != Fields.ORDERBOOK:
                 if self.snapshot[key1] != new[key1]:
-                    retdiff[key1] = new[key1]
+                    diff[key1] = new[key1]
         
         for key2 in new:
             snapshot[key2] = new[key2]
             if key2 not in self.snapshot and key2 != Fields.ORDERBOOK:
-                retdiff[key2] = new[key2]
+                diff[key2] = new[key2]
         
     
         oldobhash = ''
@@ -47,16 +47,17 @@ class SecurityData:
             newobhash =  getSHA512Hash(json.dumps(new[Fields.ORDERBOOK]))
         
         if newobhash != oldobhash:
-            retdiff['OrderBookChanges'] = True
+            diff['OrderBookChanges'] = True
         
         if len(self.snapshot) > 0:
             self.history.append(self.snapshot)
         self.snapshot = snapshot
-        self.changes.append(retdiff)
-        if len(retdiff) > 0:
-            retdiff[Fields.EXCHANGE_CODE] = new[Fields.EXCHANGE_CODE]
-            retdiff[Fields.SECURITY_CODE] = new[Fields.SECURITY_CODE]
-            globalAtomicPrinter.printit(retdiff)
+        self.changes.append(diff)
+        globalAtomicPrinter.printit(snapshot)
+        if len(diff) > 0:
+            diff[Fields.EXCHANGE_CODE] = new[Fields.EXCHANGE_CODE]
+            diff[Fields.SECURITY_CODE] = new[Fields.SECURITY_CODE]
+            globalAtomicPrinter.printit(diff)
     
     def printData(self):
         print(json.dumps(self.snapshot, indent=2))

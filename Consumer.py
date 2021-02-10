@@ -17,7 +17,7 @@ class Consumer:
         time.sleep(waitTime)
         while len(localdata) > 0:
             p = localdata.pop(0)
-            print(p)
+#             print(p)
             self.security_data.processUpdate(p)
         
     def run(self, dummy):

@@ -24,10 +24,33 @@ from bs4 import BeautifulSoup
 from BrowserWindow import BrowserWindow
 from CommSecDefs import CommSec
 from SyncGroup import SyncGroup
+
+
 # securities = ['ATH', 'XST', 'SCU', 'FRX', 'CCE', 'CAV', 'IXR', 'IOU', 'CRL', 'PWN', 'CLZ', 'UUV', 'BSM', 'AZI', 'SYA'] 
-securities = ['ATH', 'XST', 'SCU', 'FRX']#, 'CCE', 'CAV', 'IXR', 'IOU', 'CRL', 'PWN', 'CLZ', 'UUV', 'BSM', 'AZI', 'SYA'] 
+# securities = [
+#                 ['CGB', 'ACW', 'MXC', 'BRK'],
+#                 ['EQE', 'AUZ', 'CPH', 'BSM'], 
+#                 ['CCE', 'GGX', 'MSB', 'NWS'], 
+#                 ['PLL', 'BPT', 'AMP'] 
+# 
+#              ]
 
-securities_per_thread = 4
+securities = [
+                ['CGB', 'ACW', 'MXC', 'BRK']
 
-sg = SyncGroup(securities)
-sg.run()
+             ]
+        
+        
+def rungroup(secgrp):             
+    sg = SyncGroup(secgrp)
+    sg.run()
+    
+threads = []
+for secgrp in securities:
+    t = threading.Thread(name='secgrp', target=rungroup, args=(secgrp,))
+    threads.append(t)
+    t.start()
+    
+while True:
+    for t in threads:
+        t.join(3)      
