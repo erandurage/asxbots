@@ -15,12 +15,7 @@ class Consumer:
         time.sleep(waitTime)
         while len(localdata) > 0:
             p = localdata.pop(0)
-            if p != str(self.i):
-                print("INVALID OBJECT. BUGGGG at " + self.seccode + " -> " + str(self.i) + " != " + p )
-                exit(0)
-            else:
-                print("Correct value " + str(p) + " for " + self.seccode)
-                self.i = self.i + 1
+            print(p)
         
     def run(self, dummy):
         while True:

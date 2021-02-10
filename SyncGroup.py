@@ -16,20 +16,7 @@ class SyncGroup:
         self.i = self.i + 1
         print("Main thread timer triggered =" + str(self.i))
         
-        if self.i == 7:
-            print("PAUSING Producing")
-            self.flag.set(1)
-        elif self.i == 13:
-            print("RESUMING Producing")
-            self.flag.set(0)
-        
-        elif self.i == 19:
-            print("PAUSING Consumption")
-            self.flag.set(2)
-            
-        elif self.i == 23:
-            print("RESUMING Consumption")
-            self.flag.set(0)
+
                 
     def run(self):
         threads = []
