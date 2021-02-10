@@ -1,11 +1,10 @@
-from SyncGroup import SyncGroup        
 import hashlib
 import time
 import json
 import copy
 from Atomic import AtomicPrinter
 globalAtomicPrinter = AtomicPrinter()
-
+from CommonDefs import Fields
 def getSHA512Hash(s):
     b = bytearray()
     b.extend(map(ord, s))
@@ -29,23 +28,23 @@ class SecurityData:
         
         for key1 in self.snapshot:
             snapshot[key1] = self.snapshot[key1]
-            if key1 in new and key1 != 'OrderBook':
+            if key1 in new and key1 != Fields.ORDERBOOK:
                 if self.snapshot[key1] != new[key1]:
                     retdiff[key1] = new[key1]
         
         for key2 in new:
             snapshot[key2] = new[key2]
-            if key2 not in self.snapshot and key2 != 'OrderBook':
+            if key2 not in self.snapshot and key2 != Fields.ORDERBOOK:
                 retdiff[key2] = new[key2]
         
     
         oldobhash = ''
         newobhash = ''
         
-        if 'OrderBook' in self.snapshot:
-            oldobhash = getSHA512Hash(json.dumps(self.snapshot['OrderBook']))
-        if 'OrderBook' in new:
-            newobhash =  getSHA512Hash(json.dumps(new['OrderBook']))
+        if Fields.ORDERBOOK in self.snapshot:
+            oldobhash = getSHA512Hash(json.dumps(self.snapshot[Fields.ORDERBOOK]))
+        if Fields.ORDERBOOK in new:
+            newobhash =  getSHA512Hash(json.dumps(new[Fields.ORDERBOOK]))
         
         if newobhash != oldobhash:
             retdiff['OrderBookChanges'] = True
@@ -55,8 +54,8 @@ class SecurityData:
         self.snapshot = snapshot
         self.changes.append(retdiff)
         if len(retdiff) > 0:
-            retdiff['Exchange'] = new['Exchange']
-            retdiff['Security Code'] = new['Security Code']
+            retdiff[Fields.EXCHANGE_CODE] = new[Fields.EXCHANGE_CODE]
+            retdiff[Fields.SECURITY_CODE] = new[Fields.SECURITY_CODE]
             globalAtomicPrinter.printit(retdiff)
     
     def printData(self):
@@ -77,7 +76,7 @@ if __name__ == '__main__':
 #   
     sd = SecurityData()  
     s1 = {
-            'Exchange' : "ASX",
+            'Exchange Code' : "ASX",
             'Security Code' : "BHP",
             'Last traded price': "12.87",
             'Last traded volume': "8272",
@@ -90,7 +89,7 @@ if __name__ == '__main__':
 #     sd.printData()
 
     s2 = {
-            'Exchange' : "ASX",
+            'Exchange Code' : "ASX",
             'Security Code' : "BHP",
             'Last traded price': "12.88",
             'Bid qty': "272",
@@ -101,7 +100,7 @@ if __name__ == '__main__':
     sd.processUpdate(s2)
 #     sd.printData()
     s3 = {
-            'Exchange' : "ASX",
+            'Exchange Code' : "ASX",
             'Security Code' : "BHP",
             'Last traded price': "12.88",
             'Bid qty': "272",

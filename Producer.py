@@ -5,6 +5,7 @@ from BrowserWindow import BrowserWindow
 from CommSecDefs import CommSec
 from selenium.webdriver.common.keys import Keys
 from bs4 import BeautifulSoup
+from CommonDefs import Fields
 
 class Producer:
     def __init__(self, consumer_group, syncgroup):
@@ -14,11 +15,11 @@ class Producer:
         
     def extract(self, consumer):
         stock_summary = {}
-        stock_summary['Name'] = ((self.browser.createAction(CommSec.INSTRUMENT_DETAILS).get_text().split('<'))[0]).strip()
-        stock_summary['Exchange Code'] = self.browser.createAction(CommSec.EXCHANGE_CODE).get_text()
-        stock_summary['Security Code'] = self.browser.createAction(CommSec.SECURITY_CODE).get_text()
-        stock_summary['Last price'] = ((self.browser.createAction(CommSec.LAST_PRICE).get_text().split('<'))[0]).strip()
-        stock_summary['Todays Change'] = self.browser.createAction(CommSec.TODAYS_CHANGE_AMOUNT).get_text(1).strip()
+        stock_summary[Fields.NAME] = ((self.browser.createAction(CommSec.INSTRUMENT_DETAILS).get_text().split('<'))[0]).strip()
+        stock_summary[Fields.EXCHANGE_CODE] = self.browser.createAction(CommSec.EXCHANGE_CODE).get_text()
+        stock_summary[Fields.SECURITY_CODE] = self.browser.createAction(CommSec.SECURITY_CODE).get_text()
+        stock_summary[Fields.LAST_PRICE] = ((self.browser.createAction(CommSec.LAST_PRICE).get_text().split('<'))[0]).strip()
+        stock_summary[Fields.TODAYS_CHANGE] = self.browser.createAction(CommSec.TODAYS_CHANGE_AMOUNT).get_text(1).strip()
 
         items = self.browser.createAction(CommSec.STOCK_DETAILS_ITEM)._find_all()
         for i in range(0, len(items)):
@@ -56,26 +57,27 @@ class Producer:
             v = v.strip()
             stock_summary[key] = v
          
-        stock_summary['OrderBook'] = {}
-        stock_summary['OrderBook']['BuySideNumber'] = []
-        stock_summary['OrderBook']['BuySideQty'] = []
-        stock_summary['OrderBook']['BuySidePrice'] = [] 
-        stock_summary['OrderBook']['SellSideNumber'] = []
-        stock_summary['OrderBook']['SellSideQty'] = []
-        stock_summary['OrderBook']['SellSidePrice'] = [] 
+        stock_summary[Fields.ORDERBOOK] = {}
+        stock_summary[Fields.ORDERBOOK]['BuySideNumber'] = []
+        stock_summary[Fields.ORDERBOOK]['BuySideQty'] = []
+        stock_summary[Fields.ORDERBOOK]['BuySidePrice'] = [] 
+        stock_summary[Fields.ORDERBOOK]['SellSideNumber'] = []
+        stock_summary[Fields.ORDERBOOK]['SellSideQty'] = []
+        stock_summary[Fields.ORDERBOOK]['SellSidePrice'] = [] 
          
         items = self.browser.createAction(CommSec.ORDER_BOOK)._find_all()
         for i in range(0, len(items)):
             ih = items[i].get_attribute('innerHTML')
             soup = BeautifulSoup(ih, 'html.parser')
             tds = soup.find_all('td')
-            stock_summary['OrderBook']['BuySideNumber'].append(tds[0].get_text())
-            stock_summary['OrderBook']['BuySideQty'].append(tds[1].get_text())
-            stock_summary['OrderBook']['BuySidePrice'].append(tds[2].get_text())
-            stock_summary['OrderBook']['SellSideNumber'].append(tds[5].get_text())
-            stock_summary['OrderBook']['SellSideQty'].append(tds[4].get_text())
-            stock_summary['OrderBook']['SellSidePrice'].append(tds[3].get_text())
+            stock_summary[Fields.ORDERBOOK]['BuySideNumber'].append(tds[0].get_text())
+            stock_summary[Fields.ORDERBOOK]['BuySideQty'].append(tds[1].get_text())
+            stock_summary[Fields.ORDERBOOK]['BuySidePrice'].append(tds[2].get_text())
+            stock_summary[Fields.ORDERBOOK]['SellSideNumber'].append(tds[5].get_text())
+            stock_summary[Fields.ORDERBOOK]['SellSideQty'].append(tds[4].get_text())
+            stock_summary[Fields.ORDERBOOK]['SellSidePrice'].append(tds[3].get_text())
         
+        print(stock_summary)
         return stock_summary
     
     def run(self, dummy):

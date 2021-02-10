@@ -1,6 +1,7 @@
 import threading
 import time
 import random
+from SecurityData import SecurityData
 class Consumer:
     def __init__(self, seccode, syncgroup):
         self.cv = threading.Condition()
@@ -9,6 +10,7 @@ class Consumer:
         self.i = 1
         self.p = 0
         self.security_group = syncgroup
+        self.security_data = SecurityData()
     
     def consume(self, localdata):
         waitTime = random.random()
@@ -16,6 +18,7 @@ class Consumer:
         while len(localdata) > 0:
             p = localdata.pop(0)
             print(p)
+            self.security_data.processUpdate(p)
         
     def run(self, dummy):
         while True:

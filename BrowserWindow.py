@@ -7,7 +7,7 @@ from Action import Action
 class BrowserWindow:
     def __init__(self):
         options = Options()
-#         options.add_argument("--headless") 
+        options.add_argument("--headless") 
         self.driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
         self.driver.maximize_window()
     
