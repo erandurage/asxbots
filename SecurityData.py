@@ -5,6 +5,9 @@ import copy
 from Atomic import AtomicPrinter
 globalAtomicPrinter = AtomicPrinter()
 from CommonDefs import Fields
+import pandas as pd
+import numpy as np
+
 def getSHA512Hash(s):
     b = bytearray()
     b.extend(map(ord, s))
@@ -18,8 +21,14 @@ class SecurityData:
         self.snapshot = {}
         self.history = []
         self.changes =[]
+        self.trade_df = pd.DataFrame({Fields.LAST_PRICE: [],Fields.LAST_TRADED:[]})
     
 
+    def processTrade(self, data):
+        df = pd.DataFrame({Fields.LAST_PRICE: [ float(data[Fields.LAST_PRICE])],Fields.LAST_TRADED:[data[Fields.LAST_TRADED]]})
+        self.trade_df = self.trade_df.append(df)
+        self.trade_df['movav'] = self.trade_df.rolling(window=3).mean() 
+        
     def processUpdate(self, new):
         diff = {}
         snapshot = {}
@@ -55,8 +64,14 @@ class SecurityData:
             self.history.append(self.snapshot)
         self.snapshot = snapshot
         
-        
+        if Fields.LAST_TRADED in new and Fields.LAST_PRICE not in diff:
+            diff[Fields.LAST_PRICE] = self.snapshot[Fields.LAST_PRICE]
+            
         self.changes.append(diff)
+        if Fields.LAST_PRICE in diff and Fields.LAST_TRADED in diff:
+            self.processTrade(diff)
+            globalAtomicPrinter.printit(diff)
+            globalAtomicPrinter.printit(self.trade_df)
 #         globalAtomicPrinter.printit(snapshot)
         if len(diff) > 0:
             diff[Fields.EXCHANGE_CODE] = new[Fields.EXCHANGE_CODE]

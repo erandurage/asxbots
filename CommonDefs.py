@@ -11,7 +11,7 @@ class Fields:
     HIGH = 'HIGH'
     LOW = 'LOW'
     PREVIOUS_CLOSE = 'PREVIOUS_CLOSE'
-    LAST_TRADED = 'LAST_TRADED'
+    LAST_TRADED = 'Last Traded'
     HIGH_52_WEEK = 'HIGH_52_WEEK'
     LOW_52_WEEK = 'LOW_52_WEEK'
     VOLUME = 'VOLUME'
