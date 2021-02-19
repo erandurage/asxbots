@@ -18,13 +18,15 @@ class SecurityData:
         self.snapshot = {}
         self.history = []
         self.changes =[]
-        
+    
+
     def processUpdate(self, new):
         diff = {}
         snapshot = {}
         if getSHA512Hash(json.dumps(self.snapshot)) == getSHA512Hash(json.dumps(new)):
 #             print("No change")
             return
+        
         
         for key1 in self.snapshot:
             snapshot[key1] = self.snapshot[key1]
@@ -52,8 +54,10 @@ class SecurityData:
         if len(self.snapshot) > 0:
             self.history.append(self.snapshot)
         self.snapshot = snapshot
+        
+        
         self.changes.append(diff)
-        globalAtomicPrinter.printit(snapshot)
+#         globalAtomicPrinter.printit(snapshot)
         if len(diff) > 0:
             diff[Fields.EXCHANGE_CODE] = new[Fields.EXCHANGE_CODE]
             diff[Fields.SECURITY_CODE] = new[Fields.SECURITY_CODE]

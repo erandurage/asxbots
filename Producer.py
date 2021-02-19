@@ -12,8 +12,12 @@ class Producer:
     def __init__(self, consumer_group, syncgroup):
         self.consumer_group = consumer_group
         self.security_group = syncgroup
-        self.browser = BrowserWindow()
-        
+        self.browser = BrowserWindow()#headless=False)
+    
+    def getOBSideSummary(self,str):
+        astr = str.split('for')
+        return astr[0].split()[0].strip().replace(',',''), astr[1].split()[0].strip().replace(',','')
+    
     def extract(self, consumer):
         self.browser.createAction(CommSec.REFRESH).click()
         stock_summary = {}
@@ -79,9 +83,11 @@ class Producer:
             stock_summary[Fields.ORDERBOOK]['SellSideQty'].append(tds[4].get_text())
             stock_summary[Fields.ORDERBOOK]['SellSidePrice'].append(tds[3].get_text())
         
-        stock_summary[Fields.MD_SUMMARY_BUYERS] = self.browser.createAction(CommSec.MD_SUMMARY_BUYERS).get_text()
-        stock_summary[Fields.MD_SUMMARY_SELLERS] = self.browser.createAction(CommSec.MD_SUMMARY_SELLERS).get_text()
-#         print(stock_summary)
+        
+        stock_summary[Fields.BUYERS_COUNT], stock_summary[Fields.BUYERS_UNITS] = self.getOBSideSummary(self.browser.createAction(CommSec.MD_SUMMARY_BUYERS).get_text())
+        stock_summary[Fields.SELLERS_COUNT], stock_summary[Fields.SELLERS_UNITS] = self.getOBSideSummary(self.browser.createAction(CommSec.MD_SUMMARY_SELLERS).get_text())
+        
+        
         return stock_summary
     
     def run(self, dummy):
