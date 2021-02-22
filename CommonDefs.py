@@ -27,3 +27,8 @@ class Fields:
     SELLERS_COUNT = 'BUYERS_COUNT'
     BUYERS_UNITS = 'BUYERS_UNITS'
     SELLERS_UNITS = 'BUYERS_UNITS'
+    BUYSIDE_QTY = "BuySideQty"
+    SELLSIDE_QTY = "SellSideQty"
+    SELLSIDE_PRICE = "SellSidePrice"
+    BUYSIDE_PRICE = "BuySidePrice"
+    FLAG_OB_CHANGED = "OrderBookChanges"
