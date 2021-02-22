@@ -129,8 +129,8 @@ class SecurityData:
                 wa_l1trend_diff10 = numpy.average( self.l1trendPriceDiff[-10:], weights = ma_weights10)
                 wa_l1trend_diff05 = numpy.average( self.l1trendPriceDiff[-5:], weights = ma_weights05)  
                  
-                wa_finalTrend_diff10 = numpy.average( self.finalTrendPriceDiff[-10:], weights = ma_weights10),2)
-                wa_finalTrend_diff05 = numpy.average( self.finalTrendPriceDiff[-5:], weights = ma_weights05),2)   
+                wa_finalTrend_diff10 = numpy.average( self.finalTrendPriceDiff[-10:], weights = ma_weights10)
+                wa_finalTrend_diff05 = numpy.average( self.finalTrendPriceDiff[-5:], weights = ma_weights05)
                  
                 # If all three indicators are positive and weighted average of last 5 is better than last 10, things are moving in right direction. Better buy it
                 if (wa_bs_ratio_diff10 > 0 and wa_bs_ratio_diff05 > wa_bs_ratio_diff10 and wa_l1trend_diff10 > 0 and wa_l1trend_diff05 > wa_l1trend_diff10 and wa_finalTrend_diff10 > 0 and wa_finalTrend_diff05 > wa_finalTrend_diff10) :
