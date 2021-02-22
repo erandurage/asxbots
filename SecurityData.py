@@ -5,6 +5,7 @@ import copy
 import pandas
 import numpy
 from Atomic import AtomicPrinter
+from xml.etree.ElementTree import tostring
 globalAtomicPrinter = AtomicPrinter()
 from CommonDefs import Fields
 def getSHA512Hash(s):
@@ -63,7 +64,7 @@ class SecurityData:
         self.snapshot = snapshot
         self.changes.append(diff)
         
-        globalAtomicPrinter.printit(snapshot)
+        #globalAtomicPrinter.printit(snapshot)
         
         # Business logic by chanaka....
         # Total quantity at the top level of orderbook
@@ -83,14 +84,17 @@ class SecurityData:
         finalTrendPrice = float(snapshot["ORDERBOOK"]["BuySidePrice"][0].replace(",", "")) + l1Diff * buyerAmt / (buyerAmt + sellerAmt)
         
         # We need to remove this once debugging finished
-        globalAtomicPrinter.printit(snapshot["ORDERBOOK"])
+        #globalAtomicPrinter.printit(snapshot["ORDERBOOK"])
         
         #globalAtomicPrinter.printit("Buy Sell Ratio - " + str(BuySellRatio))
         #globalAtomicPrinter.printit("Level 1 Trend Price - " + str(l1trendPrice))
         #globalAtomicPrinter.printit("Final Trend Price - " + str(finalTrendPrice))
+
+        # Log calculated stuff
+        globalAtomicPrinter.printit("Stock - " + snapshot["SECURITY_CODE"] + "  l1Qty - " + str(l1Qty) + " l1Diff - " + str(l1Diff) + " buyerAmt - " + str(buyerAmt) + " sellerAmt - " + str(sellerAmt) + " BuySellRatio - " + str(BuySellRatio) + " l1trendPrice - " + str(l1trendPrice) + " finalTrendPrice - " + str(finalTrendPrice))
         
         # If at least one history values available, go and calculate differences
-        if len(self.BuySellRatio) > 0 and len(self.l1trendPrice) and len(self.finalTrendPrice):
+        if len(self.BuySellRatio) > 0 and len(self.l1trendPrice) > 0 and len(self.finalTrendPrice) > 0:
             # Calculate the change for each indicator
             BuySellRatioDiff = BuySellRatio - self.BuySellRatio[-1]
             l1TrendDiff = l1trendPrice - self.l1trendPrice[-1]
@@ -100,6 +104,9 @@ class SecurityData:
             self.BuySellRatioDiff.append(BuySellRatioDiff)
             self.l1trendPriceDiff.append(l1TrendDiff)
             self.finalTrendPriceDiff.append(FinalTrendDiff)
+            
+            # Log calculated stuff
+            globalAtomicPrinter.printit("********** BuySellRatioDiff - " + str(BuySellRatioDiff) + " l1TrendDiff - " + str(l1TrendDiff) + " FinalTrendDiff - " + str(FinalTrendDiff))
         
         # Add calculated values for self variables for the use in next iteration
         self.BuySellRatio.append(BuySellRatio)
@@ -115,23 +122,39 @@ class SecurityData:
         # Go inside and calculate trends when we have at least 10 history records
         if len(self.BuySellRatioDiff) > 9:
             # Calculate weighted average for all three indicators, for last 5 iterations and last 10 iterations
-            wa_bs_ratio_diff10 = round(numpy.average( self.BuySellRatioDiff[-10:], weights = ma_weights10),2)
-            wa_bs_ratio_diff05 = round(numpy.average( self.BuySellRatioDiff[-5:], weights = ma_weights05),2)
+            wa_bs_ratio_diff10 = numpy.average( self.BuySellRatioDiff[-10:], weights = ma_weights10)
+            wa_bs_ratio_diff05 = numpy.average( self.BuySellRatioDiff[-5:], weights = ma_weights05)
             
-            wa_l1trend_diff10 = round(numpy.average( self.l1trendPriceDiff[-10:], weights = ma_weights10),2)
-            wa_l1trend_diff05 = round(numpy.average( self.l1trendPriceDiff[-5:], weights = ma_weights05),2)    
+            wa_l1trend_diff10 = numpy.average( self.l1trendPriceDiff[-10:], weights = ma_weights10)
+            wa_l1trend_diff05 = numpy.average( self.l1trendPriceDiff[-5:], weights = ma_weights05)  
             
-            wa_finalTrend_diff10 = round(numpy.average( self.finalTrendPriceDiff[-10:], weights = ma_weights10),2)
-            wa_finalTrend_diff05 = round(numpy.average( self.finalTrendPriceDiff[-5:], weights = ma_weights05),2)   
+            wa_finalTrend_diff10 = numpy.average( self.finalTrendPriceDiff[-10:], weights = ma_weights10)
+            wa_finalTrend_diff05 = numpy.average( self.finalTrendPriceDiff[-5:], weights = ma_weights05)   
+            globalAtomicPrinter.printit(self.finalTrendPriceDiff[-5:])
             
+            # Log calculated stuff
+            globalAtomicPrinter.printit("SOTCK -- " + snapshot["SECURITY_CODE"] + " wa_bs_ratio_diff10 - " + str(wa_bs_ratio_diff10) + " wa_bs_ratio_diff05 - " + str(wa_bs_ratio_diff05) + " wa_l1trend_diff10 - " + str(wa_l1trend_diff10) + " wa_l1trend_diff05 - " + str(wa_l1trend_diff05) + " wa_finalTrend_diff10 - " + str(wa_finalTrend_diff10) + " wa_finalTrend_diff05 - " + str(wa_finalTrend_diff05))
+                
             # If all three indicators are positive and weighted average of last 5 is better than last 10, things are moving in right direction. Better buy it
             if (wa_bs_ratio_diff10 > 0 and wa_bs_ratio_diff05 > wa_bs_ratio_diff10 and wa_l1trend_diff10 > 0 and wa_l1trend_diff05 > wa_l1trend_diff10 and wa_finalTrend_diff10 > 0 and wa_finalTrend_diff05 > wa_finalTrend_diff10) :
-                globalAtomicPrinter.printit("BUY IT, HURRY UP, Its going up.... Hooray.....  Stock - " +  snapshot["ORDERBOOK"]["EXCHANGE_CODE"] + "  Limit - " + snapshot["ORDERBOOK"]["BuySidePrice"][0] + "  Market - " + snapshot["ORDERBOOK"]["SellSidePrice"][0])
+                globalAtomicPrinter.printit("*************************************************************************************************************************************************************************************************************")
+                globalAtomicPrinter.printit("*")
+                globalAtomicPrinter.printit("*")
+                globalAtomicPrinter.printit("BUY IT, HURRY UP, Its going up.... Hooray.....  Stock - " +  snapshot["SECURITY_CODE"] + "  Limit - " + snapshot["ORDERBOOK"]["BuySidePrice"][0] + "  Market - " + snapshot["ORDERBOOK"]["SellSidePrice"][0])
+                globalAtomicPrinter.printit("*")
+                globalAtomicPrinter.printit("*")
+                globalAtomicPrinter.printit("*************************************************************************************************************************************************************************************************************")
                 
             # If all indicators are negative and weighted average of last 5 is worse than last 10, this one is going down. Better to sell and save our asses.    
             if(wa_bs_ratio_diff10 < 0 and wa_bs_ratio_diff05 < wa_bs_ratio_diff10 and wa_l1trend_diff10 < 0 and wa_l1trend_diff05 < wa_l1trend_diff10 and wa_finalTrend_diff10 < 0 and wa_finalTrend_diff05 < wa_finalTrend_diff10):
-                globalAtomicPrinter.printit("SELL IT, HURRY UP, OMG Its going down.... :(.....  Stock - " +  snapshot["ORDERBOOK"]["EXCHANGE_CODE"] + "  Limit - " + snapshot["ORDERBOOK"]["SellSidePrice"][0] + "  Market - " + snapshot["ORDERBOOK"]["BuySidePrice"][0])
-        
+                globalAtomicPrinter.printit("*************************************************************************************************************************************************************************************************************")
+                globalAtomicPrinter.printit("*")
+                globalAtomicPrinter.printit("*")
+                globalAtomicPrinter.printit("SELL IT, HURRY UP, OMG Its going down.... :(.....  Stock - " +  snapshot["SECURITY_CODE"] + "  Limit - " + snapshot["ORDERBOOK"]["SellSidePrice"][0] + "  Market - " + snapshot["ORDERBOOK"]["BuySidePrice"][0])
+                globalAtomicPrinter.printit("*")
+                globalAtomicPrinter.printit("*")
+                globalAtomicPrinter.printit("*************************************************************************************************************************************************************************************************************")
+
         # We can improve these indicators and include more indicators as we go on.
         # In addition we can identify more cases using these indicators, ATM we only track two definite going down or up scenarios. But this may be more than enough to make big $$$$ if we get indicators right. 
         
