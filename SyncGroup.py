@@ -14,7 +14,7 @@ class SyncGroup:
         
     def timer(self):
         self.i = self.i + 1
-        print("Main thread timer triggered =" + str(self.i))
+
         
 
                 

@@ -8,6 +8,8 @@ from Atomic import AtomicPrinter
 from xml.etree.ElementTree import tostring
 globalAtomicPrinter = AtomicPrinter()
 from CommonDefs import Fields
+from Number import Number
+from OrderBook import OrderBook
 def getSHA512Hash(s):
     b = bytearray()
     b.extend(map(ord, s))
@@ -64,96 +66,98 @@ class SecurityData:
         self.snapshot = snapshot
         self.changes.append(diff)
         
-        #globalAtomicPrinter.printit(snapshot)
+        globalAtomicPrinter.printit(diff)
         
-        # Business logic by chanaka....
-        # Total quantity at the top level of orderbook
-        l1Qty = float(snapshot["ORDERBOOK"]["BuySideQty"][0].replace(",", "")) + float(snapshot["ORDERBOOK"]["SellSideQty"][0].replace(",", ""))
-        # Price difference between top level buy order and sell order
-        l1Diff = float(snapshot["ORDERBOOK"]["SellSidePrice"][0].replace(",", "")) - float(snapshot["ORDERBOOK"]["BuySidePrice"][0].replace(",", ""))
+    
+        if Fields.FLAG_OB_CHANGED in diff:
+            globalAtomicPrinter.printit(snapshot[Fields.ORDERBOOK])#Debug only
+            ob = OrderBook(snapshot[Fields.ORDERBOOK])
+            
+            # Business logic by chanaka....
+            # Total quantity at the top level of orderbook
+            l1Qty = ob.buy.qty[0] + ob.sell.qty[0]
+            
+            # Price difference between top level buy order and sell order
+            l1Diff = ob.sell.price[0] - ob.buy.price[0]
+ 
+            #Number of active buying quantity and selling quantity - first 6 levels considered and weight given for each level         
+            buyerAmt = ob.buy.getWeightedQty([1, .9, .8, .7, .6, .5]) #float(snapshot[Fields.ORDERBOOK][Fields.BUYSIDE_QTY][0].replace(",", "")) + float(snapshot[Fields.ORDERBOOK][Fields.BUYSIDE_QTY][1].replace(",", "")) * .9 + float(snapshot[Fields.ORDERBOOK][Fields.BUYSIDE_QTY][2].replace(",", "")) * .8 + float(snapshot[Fields.ORDERBOOK][Fields.BUYSIDE_QTY][3].replace(",", ""))* .7 + float(snapshot[Fields.ORDERBOOK][Fields.BUYSIDE_QTY][4].replace(",", "")) * .6 + float(snapshot[Fields.ORDERBOOK][Fields.BUYSIDE_QTY][5].replace(",", "")) * .5
+            sellerAmt = ob.sell.getWeightedQty([1, .9, .8, .7, .6, .5]) #float(snapshot[Fields.ORDERBOOK][Fields.SELLSIDE_QTY][0].replace(",", "")) + float(snapshot[Fields.ORDERBOOK][Fields.SELLSIDE_QTY][1].replace(",", "")) * .9 + float(snapshot[Fields.ORDERBOOK][Fields.SELLSIDE_QTY][2].replace(",", "")) * .8 + float(snapshot[Fields.ORDERBOOK][Fields.SELLSIDE_QTY][3].replace(",", ""))* .7 + float(snapshot[Fields.ORDERBOOK][Fields.SELLSIDE_QTY][4].replace(",", "")) * .6 + float(snapshot[Fields.ORDERBOOK][Fields.SELLSIDE_QTY][5].replace(",", "")) * .5
 
-        #Number of active buying quantity and selling quantity - first 6 levels considered and weight given for each level
-        buyerAmt = float(snapshot["ORDERBOOK"]["BuySideQty"][0].replace(",", "")) + float(snapshot["ORDERBOOK"]["BuySideQty"][1].replace(",", "")) * .9 + float(snapshot["ORDERBOOK"]["BuySideQty"][2].replace(",", "")) * .8 + float(snapshot["ORDERBOOK"]["BuySideQty"][3].replace(",", ""))* .7 + float(snapshot["ORDERBOOK"]["BuySideQty"][4].replace(",", "")) * .6 + float(snapshot["ORDERBOOK"]["BuySideQty"][5].replace(",", "")) * .5
-        sellerAmt = float(snapshot["ORDERBOOK"]["SellSideQty"][0].replace(",", "")) + float(snapshot["ORDERBOOK"]["SellSideQty"][1].replace(",", "")) * .9 + float(snapshot["ORDERBOOK"]["SellSideQty"][2].replace(",", "")) * .8 + float(snapshot["ORDERBOOK"]["SellSideQty"][3].replace(",", ""))* .7 + float(snapshot["ORDERBOOK"]["SellSideQty"][4].replace(",", "")) * .6 + float(snapshot["ORDERBOOK"]["SellSideQty"][5].replace(",", "")) * .5
-        # Buy/Sell ratio based on above values - much better than whats shown in commsec webpage
-        BuySellRatio = buyerAmt/sellerAmt
+            # Buy/Sell ratio based on above values - much better than whats shown in commsec webpage
+            BuySellRatio = buyerAmt/sellerAmt
+            globalAtomicPrinter.printit(BuySellRatio)
+ 
+            # Trending price calculated based on top level - this is a virtual value ATM for the stock - much better than last traded price
+            l1trendPrice = ob.buy.price[0]  + l1Diff * ob.buy.qty[0] / l1Qty
+            
+            # Trending price calculated based on six levels - this is the final virtual value ATM for the stock 
+            finalTrendPrice = ob.buy.price[0] + l1Diff * buyerAmt / (buyerAmt + sellerAmt)
+            
+            globalAtomicPrinter.printit(snapshot[Fields.SECURITY_CODE] + " ->" + str(BuySellRatio) + ", " + str(l1trendPrice) + ", " + str(finalTrendPrice))
+          
+       
+            # If at least one history values available, go and calculate differences
+            if len(self.BuySellRatio) > 0 and len(self.l1trendPrice) and len(self.finalTrendPrice):
+                # Calculate the change for each indicator
+                BuySellRatioDiff = BuySellRatio - self.BuySellRatio[-1]
+                l1TrendDiff = l1trendPrice - self.l1trendPrice[-1]
+                FinalTrendDiff = finalTrendPrice - self.finalTrendPrice[-1]
+                 
+                # Save these differences in self variables for the use of next iteration
+                self.BuySellRatioDiff.append(BuySellRatioDiff)
+                self.l1trendPriceDiff.append(l1TrendDiff)
+                self.finalTrendPriceDiff.append(FinalTrendDiff)
+         
+            # Add calculated values for self variables for the use in next iteration
+            self.BuySellRatio.append(BuySellRatio)
+            self.l1trendPrice.append(l1trendPrice)
+            self.finalTrendPrice.append(finalTrendPrice)
+         
+            # Define weight sequences for weighted average calculations
+            ma_weights10 = [.1,.2,.3,.4,.5,.6,.7,.8,.9,1]
+            ma_weights05 = [.2,.4,.6,.8,1]
+         
+            # Analyse trand and decide buying/ selling part starts here
+         
+            # Go inside and calculate trends when we have at least 10 history records
+            if len(self.BuySellRatioDiff) > 9:
+                # Calculate weighted average for all three indicators, for last 5 iterations and last 10 iterations
+                wa_bs_ratio_diff10 = numpy.average( self.BuySellRatioDiff[-10:], weights = ma_weights10)
+                wa_bs_ratio_diff05 = numpy.average( self.BuySellRatioDiff[-5:], weights = ma_weights05)
+                 
+                wa_l1trend_diff10 = numpy.average( self.l1trendPriceDiff[-10:], weights = ma_weights10)
+                wa_l1trend_diff05 = numpy.average( self.l1trendPriceDiff[-5:], weights = ma_weights05)  
+                 
+                wa_finalTrend_diff10 = numpy.average( self.finalTrendPriceDiff[-10:], weights = ma_weights10),2)
+                wa_finalTrend_diff05 = numpy.average( self.finalTrendPriceDiff[-5:], weights = ma_weights05),2)   
+                 
+                # If all three indicators are positive and weighted average of last 5 is better than last 10, things are moving in right direction. Better buy it
+                if (wa_bs_ratio_diff10 > 0 and wa_bs_ratio_diff05 > wa_bs_ratio_diff10 and wa_l1trend_diff10 > 0 and wa_l1trend_diff05 > wa_l1trend_diff10 and wa_finalTrend_diff10 > 0 and wa_finalTrend_diff05 > wa_finalTrend_diff10) :
+                    globalAtomicPrinter.printit("*************************************************************************************************************************************************************************************************************")
+                    globalAtomicPrinter.printit("*")
+                    globalAtomicPrinter.printit("*")
+                    globalAtomicPrinter.printit("BUY IT, HURRY UP, Its going up.... Hooray.....  Stock - " +  snapshot["SECURITY_CODE"] + "  Limit - " + snapshot["ORDERBOOK"]["BuySidePrice"][0] + "  Market - " + snapshot["ORDERBOOK"]["SellSidePrice"][0])
+                    globalAtomicPrinter.printit("*")
+                    globalAtomicPrinter.printit("*")
+                    globalAtomicPrinter.printit("*************************************************************************************************************************************************************************************************************")
 
-        # Trending price calculated based on top level - this is a virtual value ATM for the stock - much better than last traded price
-        l1trendPrice = float(snapshot["ORDERBOOK"]["BuySidePrice"][0].replace(",", "")) + l1Diff * float(snapshot["ORDERBOOK"]["BuySideQty"][0].replace(",", "")) / l1Qty
-        # Trending price calculated based on six levels - this is the final virtual value ATM for the stock 
-        finalTrendPrice = float(snapshot["ORDERBOOK"]["BuySidePrice"][0].replace(",", "")) + l1Diff * buyerAmt / (buyerAmt + sellerAmt)
-        
-        # We need to remove this once debugging finished
-        #globalAtomicPrinter.printit(snapshot["ORDERBOOK"])
-        
-        #globalAtomicPrinter.printit("Buy Sell Ratio - " + str(BuySellRatio))
-        #globalAtomicPrinter.printit("Level 1 Trend Price - " + str(l1trendPrice))
-        #globalAtomicPrinter.printit("Final Trend Price - " + str(finalTrendPrice))
+                else:
+                    globalAtomicPrinter.printit(snapshot[Fields.SECURITY_CODE] + " do NOT BUY")
+                # If all indicators are negative and weighted average of last 5 is worse than last 10, this one is going down. Better to sell and save our asses.    
+                if(wa_bs_ratio_diff10 < 0 and wa_bs_ratio_diff05 < wa_bs_ratio_diff10 and wa_l1trend_diff10 < 0 and wa_l1trend_diff05 < wa_l1trend_diff10 and wa_finalTrend_diff10 < 0 and wa_finalTrend_diff05 < wa_finalTrend_diff10):
+                    globalAtomicPrinter.printit("*************************************************************************************************************************************************************************************************************")
+                    globalAtomicPrinter.printit("*")
+                    globalAtomicPrinter.printit("*")
+                    globalAtomicPrinter.printit("SELL IT, HURRY UP, OMG Its going down.... :(.....  Stock - " +  snapshot["SECURITY_CODE"] + "  Limit - " + snapshot["ORDERBOOK"]["SellSidePrice"][0] + "  Market - " + snapshot["ORDERBOOK"]["BuySidePrice"][0])
+                    globalAtomicPrinter.printit("*")
+                    globalAtomicPrinter.printit("*")
+                    globalAtomicPrinter.printit("*************************************************************************************************************************************************************************************************************")
 
-        # Log calculated stuff
-        globalAtomicPrinter.printit("Stock - " + snapshot["SECURITY_CODE"] + "  l1Qty - " + str(l1Qty) + " l1Diff - " + str(l1Diff) + " buyerAmt - " + str(buyerAmt) + " sellerAmt - " + str(sellerAmt) + " BuySellRatio - " + str(BuySellRatio) + " l1trendPrice - " + str(l1trendPrice) + " finalTrendPrice - " + str(finalTrendPrice))
-        
-        # If at least one history values available, go and calculate differences
-        if len(self.BuySellRatio) > 0 and len(self.l1trendPrice) > 0 and len(self.finalTrendPrice) > 0:
-            # Calculate the change for each indicator
-            BuySellRatioDiff = BuySellRatio - self.BuySellRatio[-1]
-            l1TrendDiff = l1trendPrice - self.l1trendPrice[-1]
-            FinalTrendDiff = finalTrendPrice - self.finalTrendPrice[-1]
-            
-            # Save these differences in self variables for the use of next iteration
-            self.BuySellRatioDiff.append(BuySellRatioDiff)
-            self.l1trendPriceDiff.append(l1TrendDiff)
-            self.finalTrendPriceDiff.append(FinalTrendDiff)
-            
-            # Log calculated stuff
-            globalAtomicPrinter.printit("********** BuySellRatioDiff - " + str(BuySellRatioDiff) + " l1TrendDiff - " + str(l1TrendDiff) + " FinalTrendDiff - " + str(FinalTrendDiff))
-        
-        # Add calculated values for self variables for the use in next iteration
-        self.BuySellRatio.append(BuySellRatio)
-        self.l1trendPrice.append(l1trendPrice)
-        self.finalTrendPrice.append(finalTrendPrice)
-        
-        # Define weight sequences for weighted average calculations
-        ma_weights10 = [.1,.2,.3,.4,.5,.6,.7,.8,.9,1]
-        ma_weights05 = [.2,.4,.6,.8,1]
-        
-        # Analyse trand and decide buying/ selling part starts here
-        
-        # Go inside and calculate trends when we have at least 10 history records
-        if len(self.BuySellRatioDiff) > 9:
-            # Calculate weighted average for all three indicators, for last 5 iterations and last 10 iterations
-            wa_bs_ratio_diff10 = numpy.average( self.BuySellRatioDiff[-10:], weights = ma_weights10)
-            wa_bs_ratio_diff05 = numpy.average( self.BuySellRatioDiff[-5:], weights = ma_weights05)
-            
-            wa_l1trend_diff10 = numpy.average( self.l1trendPriceDiff[-10:], weights = ma_weights10)
-            wa_l1trend_diff05 = numpy.average( self.l1trendPriceDiff[-5:], weights = ma_weights05)  
-            
-            wa_finalTrend_diff10 = numpy.average( self.finalTrendPriceDiff[-10:], weights = ma_weights10)
-            wa_finalTrend_diff05 = numpy.average( self.finalTrendPriceDiff[-5:], weights = ma_weights05)   
-            globalAtomicPrinter.printit(self.finalTrendPriceDiff[-5:])
-            
-            # Log calculated stuff
-            globalAtomicPrinter.printit("SOTCK -- " + snapshot["SECURITY_CODE"] + " wa_bs_ratio_diff10 - " + str(wa_bs_ratio_diff10) + " wa_bs_ratio_diff05 - " + str(wa_bs_ratio_diff05) + " wa_l1trend_diff10 - " + str(wa_l1trend_diff10) + " wa_l1trend_diff05 - " + str(wa_l1trend_diff05) + " wa_finalTrend_diff10 - " + str(wa_finalTrend_diff10) + " wa_finalTrend_diff05 - " + str(wa_finalTrend_diff05))
-                
-            # If all three indicators are positive and weighted average of last 5 is better than last 10, things are moving in right direction. Better buy it
-            if (wa_bs_ratio_diff10 > 0 and wa_bs_ratio_diff05 > wa_bs_ratio_diff10 and wa_l1trend_diff10 > 0 and wa_l1trend_diff05 > wa_l1trend_diff10 and wa_finalTrend_diff10 > 0 and wa_finalTrend_diff05 > wa_finalTrend_diff10) :
-                globalAtomicPrinter.printit("*************************************************************************************************************************************************************************************************************")
-                globalAtomicPrinter.printit("*")
-                globalAtomicPrinter.printit("*")
-                globalAtomicPrinter.printit("BUY IT, HURRY UP, Its going up.... Hooray.....  Stock - " +  snapshot["SECURITY_CODE"] + "  Limit - " + snapshot["ORDERBOOK"]["BuySidePrice"][0] + "  Market - " + snapshot["ORDERBOOK"]["SellSidePrice"][0])
-                globalAtomicPrinter.printit("*")
-                globalAtomicPrinter.printit("*")
-                globalAtomicPrinter.printit("*************************************************************************************************************************************************************************************************************")
-                
-            # If all indicators are negative and weighted average of last 5 is worse than last 10, this one is going down. Better to sell and save our asses.    
-            if(wa_bs_ratio_diff10 < 0 and wa_bs_ratio_diff05 < wa_bs_ratio_diff10 and wa_l1trend_diff10 < 0 and wa_l1trend_diff05 < wa_l1trend_diff10 and wa_finalTrend_diff10 < 0 and wa_finalTrend_diff05 < wa_finalTrend_diff10):
-                globalAtomicPrinter.printit("*************************************************************************************************************************************************************************************************************")
-                globalAtomicPrinter.printit("*")
-                globalAtomicPrinter.printit("*")
-                globalAtomicPrinter.printit("SELL IT, HURRY UP, OMG Its going down.... :(.....  Stock - " +  snapshot["SECURITY_CODE"] + "  Limit - " + snapshot["ORDERBOOK"]["SellSidePrice"][0] + "  Market - " + snapshot["ORDERBOOK"]["BuySidePrice"][0])
-                globalAtomicPrinter.printit("*")
-                globalAtomicPrinter.printit("*")
-                globalAtomicPrinter.printit("*************************************************************************************************************************************************************************************************************")
+                else:
+                    globalAtomicPrinter.printit(snapshot[Fields.SECURITY_CODE] + " do NOT SELL")
+            else:
+                globalAtomicPrinter.printit(snapshot[Fields.SECURITY_CODE] + " not enough ratios accumilated. Current count is " + str(len(self.BuySellRatioDiff)))
 
         # We can improve these indicators and include more indicators as we go on.
         # In addition we can identify more cases using these indicators, ATM we only track two definite going down or up scenarios. But this may be more than enough to make big $$$$ if we get indicators right. 

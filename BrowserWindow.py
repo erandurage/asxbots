@@ -5,9 +5,10 @@ from selenium.webdriver.chrome.options import Options
 from Action import Action
 
 class BrowserWindow:
-    def __init__(self):
+    def __init__(self, headless=True):
         options = Options()
-        options.add_argument("--headless") 
+        if headless:
+            options.add_argument("--headless") 
         self.driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
         self.driver.maximize_window()
     
