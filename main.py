@@ -36,7 +36,7 @@ from SyncGroup import SyncGroup
 #              ]
 
 securities = [
-                ['IOU', 'JAT', 'PWN', 'MXC']
+                ['PLS']
 
              ]
         

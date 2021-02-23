@@ -1,5 +1,7 @@
 from Number import Number
 from CommonDefs import Fields
+from Atomic import AtomicPrinter
+globalAtomicPrinter = AtomicPrinter()
 class OrderBookSide:
     def __init__(self):
         self.qty = []
@@ -7,9 +9,11 @@ class OrderBookSide:
     
     def fill(self, qty, price):
         for q in qty:
+#             globalAtomicPrinter.printit(q)
             self.qty.append(Number(q).value)
         
         for p in price:
+#             globalAtomicPrinter.printit(p)
             self.price.append(Number(p).value)
     
     
