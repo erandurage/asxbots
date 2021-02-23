@@ -1,6 +1,7 @@
 from Atomic import AtomicPrinter
 from ast import Num
 globalAtomicPrinter = AtomicPrinter()
+import numpy as np
 class Number:
     def remove_dirty_strs(self, str):
         for sr in [",", "-", " ", "$"]:
@@ -13,5 +14,5 @@ class Number:
     
     def __init__(self, str):
         str = self.remove_dirty_strs(str).strip()
-        self.value = float(str)
+        self.value = np.float128(str)
     
