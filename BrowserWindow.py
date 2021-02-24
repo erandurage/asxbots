@@ -3,10 +3,19 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options
 
 from Action import Action
+import os 
+
 
 class BrowserWindow:
     def __init__(self, headless=True):
         options = Options()
+        options.add_experimental_option("prefs", {
+          "download.default_directory": r""+os.path.dirname(os.path.realpath(__file__)) +"",
+          "download.prompt_for_download": False,
+          "download.directory_upgrade": True,
+          "safebrowsing.enabled": True
+        })
+
         if headless:
             options.add_argument("--headless") 
         self.driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
@@ -20,6 +29,10 @@ class BrowserWindow:
         
     def switchToTab(self, tabid):
         self.driver.switch_to.window(self.driver.window_handles[tabid])
+    
+    def closeCurrentTab(self):
+        self.driver.close()
+        self.driver.switch_to.window(self.driver.window_handles[0])
         
     def createAction(self, xpath=''):
         return Action(self.driver , xpath)
