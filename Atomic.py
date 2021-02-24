@@ -16,6 +16,21 @@ class AtomicNumber(object):
         """Atomically gets the counter by num and return the new value"""
         with self._lock:
             return self._value
+        
+class AtomicDictionary(object):
+    def __init__(self):
+        self._value = {}
+        self._lock = threading.Lock()
+    
+    def set(self, key, value):
+        with self._lock:
+            self._value[key] = value
+    
+    def get(self, key):
+        ret = None
+        with self._lock:
+            ret = self._value[key]
+        return ret
 
 class AtomicPrinter(object):
     """An atomic, thread-safe printer"""
