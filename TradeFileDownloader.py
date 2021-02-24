@@ -1,6 +1,7 @@
 import time
 import random
 
+from datetime import datetime
 from BrowserWindow import BrowserWindow
 from CommSecDefs import CommSec
 from selenium.webdriver.common.keys import Keys
@@ -13,7 +14,8 @@ import numpy as np
 PRICE_MUL_FACTOR = 1000000
 import datetime 
 from scipy.signal import argrelextrema
-seclist = [ 'PRL']
+
+seclist = [ 'PRL', 'IOU']
 # seclist = ["RAN", "AVZ", "ECS", "VMS", "ANA", "MLX", "BMN", "VAL", "ASN", "EM1", "HCH", "IPT", "BGL", "MNS", "CRL", "ADO", "VIC", "EFE", "SHE", "PEN", "CAD", "DOU", "IBX", "ACW", "MGT", "TSC", "BCN", "PRM", "HSC", "ADV", "AGE", "MHC", "MSR", "AUZ", "RBR", "SRZ", "NPM", "GGG", "FPL", "NWE", "LKE", "MBK", "RFX", "BOE", "AGY", "SVL", "PDN", "PCL", "GGX", "ELT", "NTU", "CXO", "BUY", "QFY", "FRX", "CCA", "ICI", "DCC", "MCT", "VML", "AO1", "BRK", "HWK", "GTG", "GMR", "SYA", "LSR", "AOA", "HLX", "RNU", "SI6", "VPR", "IOU", "DW8", "IXR", "SRN", "ASP", "SCU", "LRS", "BPH", "CGB", "ARE", "ESH", "OEX", "ROG", "ANL", "QPM", "OAR", "CM8", "ANW", "9SP", "T3D", "MAY", "CLZ", "GLV", "CCE", "PUR", "SHO", "FGO", "ADX", "MXC", "XST", "JAT", "PWN", "88E", "WOO", "CRO", "FFG", "UUV", "PRL", "CI1"]
 # seclist = [ "ADX", "MXC", "XST", "JAT", "PWN", "88E", "WOO", "CRO", "FFG", "UUV", "PRL", "CI1"]
 
@@ -100,24 +102,39 @@ seclist = [ 'PRL']
 #     print(seccode + " ->" + str( len(df.index)))
 # print(dfasec.sort_values(by=['trades']).to_string())
 # print("DONE")
+def getOBSideSummary(str):
+    astr = str.split('for')
+    return astr[0].split()[0].strip().replace(',',''), astr[1].split()[0].strip().replace(',','')
+
 browser = BrowserWindow(headless=False)
 browser.openURL(CommSec.HOME_URL)
 browser.createAction(CommSec.CLIENT_ID).send_keys(COMMSEC_USERNAME).send_keys(Keys.TAB)
 browser.createAction(CommSec.PASSWORD).send_keys(COMMSEC_PASSWORD).send_keys(Keys.RETURN)
 print(browser.createAction(CommSec.ACCOUNT_DETAILS).get_text())
+now = datetime.datetime.now() 
+filenametemplate = "Course_of_sales_---_"+ now.strftime("%d%b%Y") +".csv" 
 
 for sec in seclist:
     print(sec)
     browser.openTab(CommSec.SECURITY_PARTIAL_URL.replace('___', sec))
     browser.switchToTab(1)
+
+
+    buyercount, buyerunits = getOBSideSummary(browser.createAction(CommSec.MD_SUMMARY_BUYERS).get_text())
+    sellercount, sellerunits = getOBSideSummary(browser.createAction(CommSec.MD_SUMMARY_SELLERS).get_text())
+    
     browser.createAction(CommSec.COURSE_OF_SALES).click()
     browser.createAction(CommSec.DOWNLOAD_TRADES).click()
-    
-    
-#     at = browser.createAction(CommSec.COURSE_OF_SALES_TIMES).get_all_values()
-#     ap = browser.createAction(CommSec.COURSE_OF_SALES_PRICES).get_all_values()
-#     av = browser.createAction(CommSec.COURSE_OF_SALES_VOLUMES).get_all_values()
-    print("++++++++++++++++++++++++++++")
-    time.sleep(3)
+    browser.closeCurrentTab()
+
+time.sleep(3)
+for sec in seclist:
+    filename = filenametemplate.replace('---', sec)
+    print("File to read " + filename)
+    df = pd.read_csv(filename)
+    print(df)
+
+browser.close()
+
 #     df = pd.DataFrame({"Time":at, "Price":ap, "Volume":av})
 #     print(df)
