@@ -15,4 +15,11 @@ class CommSec:
     REFRESH = '//button[@class="button button--clean header-button"]'
     MD_SUMMARY_BUYERS = '//div[@class="p-1-2 market-depth__footer--left ng-star-inserted"]'
     MD_SUMMARY_SELLERS = '//div[@class="p-1-2 market-depth__footer--right ng-star-inserted"]'
-    
+    SUMMARY_OPEN_IN_NEW_WINDOW = '//button[@class="trading-view-link button button--xsmall button--link" and text()="Open in new window"]'
+    COURSE_OF_SALES = '//button[@id="overview_cost_of_sales_tab"]'
+    COURSE_OF_SALES_TRADE_DATA = '//tbody[@tabindex="0" and @class="qr-table__body"]'
+    COURSE_OF_SALES_TIMES = '//tr[@class="qr-table__row ng-star-inserted"]/td[1]'
+    COURSE_OF_SALES_PRICES = '//tr[@class="qr-table__row ng-star-inserted"]/td[2]'
+    COURSE_OF_SALES_VOLUMES = '//tr[@class="qr-table__row ng-star-inserted"]/td[3]'
+    SEARCH_BOX = '//div[@id="search-container"]/input'
+    DOWNLOAD_TRADES = '//button[@class="button button--accent button--xsmall flex--align-right" and text()="Download CSV"]'

@@ -37,6 +37,15 @@ class Action:
         self._find()
         return self.driver.find_elements(By.XPATH, self.xpath )
     
+    def get_all_values(self):
+        self._find()
+        ret = []
+        for e in self.driver.find_elements(By.XPATH, self.xpath ):
+            v = e.get_attribute('innerHTML')
+            ret.append(v)
+        return ret
+        
+    
     def _relocate(self, n):
         self._find()
         e = self.driver.find_elements(By.XPATH, self.xpath )
@@ -95,6 +104,10 @@ class Action:
 
     def get_text(self, n=0):
         return self._relocate(n).get_attribute('innerHTML')
+
+    def get_HTML(self):
+        s = self._find()
+        return s.get_attribute('innerHTML')
     
     def print_all(self):
         es = self._find_all()

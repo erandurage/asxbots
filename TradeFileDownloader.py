@@ -35,37 +35,37 @@ seclist = [ 'PRL']
 #  
 # time.sleep(5)
 # browser.close()
-totpnl = 0
-dfasec = pd.DataFrame({"seccode":[], "trades":[]})
-for seccode in seclist:
-    print("Processing " + seccode)
-    filename = 'Course_of_sales_'+ seccode +'_23Feb2021.csv'
-    df = pd.DataFrame({'Time': [], "Price": [] })
-    with open(filename) as f:
-        lines = f.readlines()
-        for line in reversed(lines[1:]):
-            al = line.split(',')
-            dfl = pd.DataFrame({'Time': [al[0]], "Price": [ np.float128(al[1])*PRICE_MUL_FACTOR] })
-            dfl['Time'] = pd.to_datetime(dfl['Time'])
-            df = df.append(dfl)
-            df.index = range(1,len(df)+1) 
-            ma = df.rolling(window=20).mean()
-            df['ma_Price'] = ma['Price']
-            n = 20
-            df['min'] = df.iloc[argrelextrema(df.ma_Price.values, np.less_equal, order=n)[0]]['ma_Price']
-            df['max'] = df.iloc[argrelextrema(df.ma_Price.values, np.greater_equal,order=n)[0]]['ma_Price']
-             
-            df['minu'] = np.where(df['min']!=df['max'], df['min'], np.NaN)
-            df['maxu'] = np.where(df['min']!=df['max'], df['max'], np.NaN)
-            last = df.tail(1)
-            if len(last.index):
-                tgval =  (last)['minu'].iloc[0]
-                if np.isnan(tgval) == False:
-                    print("Buy at " + str(tgval))
-#                     print(df)
-#                     time.sleep(1000)
-#             df = df.rename(columns={"Price $": "Price", "Value $": "Value"}).iloc[::-1]
-    print(df.head(200).to_string())
+# totpnl = 0
+# dfasec = pd.DataFrame({"seccode":[], "trades":[]})
+# for seccode in seclist:
+#     print("Processing " + seccode)
+#     filename = 'Course_of_sales_'+ seccode +'_23Feb2021.csv'
+#     df = pd.DataFrame({'Time': [], "Price": [] })
+#     with open(filename) as f:
+#         lines = f.readlines()
+#         for line in reversed(lines[1:]):
+#             al = line.split(',')
+#             dfl = pd.DataFrame({'Time': [al[0]], "Price": [ np.float128(al[1])*PRICE_MUL_FACTOR] })
+#             dfl['Time'] = pd.to_datetime(dfl['Time'])
+#             df = df.append(dfl)
+#             df.index = range(1,len(df)+1) 
+#             ma = df.rolling(window=20).mean()
+#             df['ma_Price'] = ma['Price']
+#             n = 20
+#             df['min'] = df.iloc[argrelextrema(df.ma_Price.values, np.less_equal, order=n)[0]]['ma_Price']
+#             df['max'] = df.iloc[argrelextrema(df.ma_Price.values, np.greater_equal,order=n)[0]]['ma_Price']
+#              
+#             df['minu'] = np.where(df['min']!=df['max'], df['min'], np.NaN)
+#             df['maxu'] = np.where(df['min']!=df['max'], df['max'], np.NaN)
+#             last = df.tail(1)
+#             if len(last.index):
+#                 tgval =  (last)['minu'].iloc[0]
+#                 if np.isnan(tgval) == False:
+#                     print("Buy at " + str(tgval))
+# #                     print(df)
+# #                     time.sleep(1000)
+# #             df = df.rename(columns={"Price $": "Price", "Value $": "Value"}).iloc[::-1]
+#     print(df.head(200).to_string())
         
 #     df = pd.read_csv(filename)
 #     
@@ -99,5 +99,24 @@ for seccode in seclist:
     
 #     print(seccode + " ->" + str( len(df.index)))
 # print(dfasec.sort_values(by=['trades']).to_string())
-print("DONE")
+# print("DONE")
+browser = BrowserWindow(headless=False)
+browser.openURL(CommSec.HOME_URL)
+browser.createAction(CommSec.CLIENT_ID).send_keys(COMMSEC_USERNAME).send_keys(Keys.TAB)
+browser.createAction(CommSec.PASSWORD).send_keys(COMMSEC_PASSWORD).send_keys(Keys.RETURN)
+print(browser.createAction(CommSec.ACCOUNT_DETAILS).get_text())
+
+for sec in seclist:
+    print(sec)
+    browser.openTab(CommSec.SECURITY_PARTIAL_URL.replace('___', sec))
+    browser.switchToTab(1)
+    browser.createAction(CommSec.COURSE_OF_SALES).click()
     
+    
+#     at = browser.createAction(CommSec.COURSE_OF_SALES_TIMES).get_all_values()
+#     ap = browser.createAction(CommSec.COURSE_OF_SALES_PRICES).get_all_values()
+#     av = browser.createAction(CommSec.COURSE_OF_SALES_VOLUMES).get_all_values()
+    print("++++++++++++++++++++++++++++")
+    time.sleep(3)
+#     df = pd.DataFrame({"Time":at, "Price":ap, "Volume":av})
+#     print(df)
