@@ -111,6 +111,7 @@ for sec in seclist:
     browser.openTab(CommSec.SECURITY_PARTIAL_URL.replace('___', sec))
     browser.switchToTab(1)
     browser.createAction(CommSec.COURSE_OF_SALES).click()
+    browser.createAction(CommSec.DOWNLOAD_TRADES).click()
     
     
 #     at = browser.createAction(CommSec.COURSE_OF_SALES_TIMES).get_all_values()
