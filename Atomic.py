@@ -1,4 +1,5 @@
 import threading
+import json
 class AtomicNumber(object):
     """An atomic, thread-safe number"""
     def __init__(self, initial=0):
@@ -18,19 +19,20 @@ class AtomicNumber(object):
             return self._value
         
 class AtomicDictionary(object):
-    def __init__(self):
-        self._value = {}
+    def __init__(self, d = {}):
+        self._value = d
         self._lock = threading.Lock()
     
     def set(self, key, value):
-        with self._lock:
-            self._value[key] = value
+        #Lock befor doing this
+        self._value[key] = value
     
     def get(self, key):
-        ret = None
-        with self._lock:
-            ret = self._value[key]
-        return ret
+        #Lock befor doing this
+        return self._value[key]
+    
+
+    
 
 class AtomicPrinter(object):
     """An atomic, thread-safe printer"""

@@ -41,3 +41,6 @@ class BrowserWindow:
         self.driver.delete_all_cookies()
         self.driver.close()
         print("Browser successfully closed!")
+        
+    def getTitle(self):
+        return self.driver.title
