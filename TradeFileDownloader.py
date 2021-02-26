@@ -11,7 +11,7 @@ from Password import *
 from CommSecDefs import CommSec
 import pandas as pd
 import numpy as np
-from _xxtestfuzz import run
+from test import test_selectors
 PRICE_MUL_FACTOR = 1000000
 import datetime 
 from scipy.signal import argrelextrema
@@ -20,7 +20,7 @@ import threading
 from pathlib import Path
 import os 
 
-seclist = [ 'PRL', 'IOU']
+
 # seclist = ["RAN", "AVZ", "ECS", "VMS", "ANA", "MLX", "BMN", "VAL", "ASN", "EM1", "HCH", "IPT", "BGL", "MNS", "CRL", "ADO", "VIC", "EFE", "SHE", "PEN", "CAD", "DOU", "IBX", "ACW", "MGT", "TSC", "BCN", "PRM", "HSC", "ADV", "AGE", "MHC", "MSR", "AUZ", "RBR", "SRZ", "NPM", "GGG", "FPL", "NWE", "LKE", "MBK", "RFX", "BOE", "AGY", "SVL", "PDN", "PCL", "GGX", "ELT", "NTU", "CXO", "BUY", "QFY", "FRX", "CCA", "ICI", "DCC", "MCT", "VML", "AO1", "BRK", "HWK", "GTG", "GMR", "SYA", "LSR", "AOA", "HLX", "RNU", "SI6", "VPR", "IOU", "DW8", "IXR", "SRN", "ASP", "SCU", "LRS", "BPH", "CGB", "ARE", "ESH", "OEX", "ROG", "ANL", "QPM", "OAR", "CM8", "ANW", "9SP", "T3D", "MAY", "CLZ", "GLV", "CCE", "PUR", "SHO", "FGO", "ADX", "MXC", "XST", "JAT", "PWN", "88E", "WOO", "CRO", "FFG", "UUV", "PRL", "CI1"]
 # seclist = [ "ADX", "MXC", "XST", "JAT", "PWN", "88E", "WOO", "CRO", "FFG", "UUV", "PRL", "CI1"]
 
@@ -107,6 +107,10 @@ seclist = [ 'PRL', 'IOU']
 #     print(seccode + " ->" + str( len(df.index)))
 # print(dfasec.sort_values(by=['trades']).to_string())
 # print("DONE")
+
+selected_sec_data = AtomicDictionary()
+selected_sec_data.set('df', pd.DataFrame())
+
 class CommSecExtractor:        
     def getOBSideSummary(self,str):
         astr = str.split('for')
@@ -140,31 +144,35 @@ class CommSecExtractor:
                     continue
             
                 
-                try:
-                    items = browser.createAction(CommSec.STOCK_DETAILS_ITEM_SINGLE_FIELD)._find_all()
-                except:
-                    print("Exception in " + sec)
-                    time.sleep(30000)
-                        
-                
+                lastprice = ((browser.createAction(CommSec.LAST_PRICE).get_text().split('<'))[0]).strip().replace('$', '').replace(',', '').replace('-', '0')
                 tradevalue = 0
-                for i in range(0, len(items)):
-                        ih = items[i].get_attribute('innerHTML')
-                        soup = BeautifulSoup(ih, 'html.parser')
-                        soup.tooltip.span.span.span.next_sibling.clear()
-                        fieldname = soup.tooltip.get_text()
-                        value = soup.span.next_sibling.get_text()
-                        if value == '-':
-                            value = '0'
-                        
-                        value = value.replace(',', '')
-                        
-                        if fieldname == 'Trades':
-                            tradevalue = int(value) 
-                            
-                items = browser.createAction(CommSec.STOCK_DETAILS_ITEM)._find_all()
+                openprice = 0
+                hightprice = 0
+                lowprice = 0 
                 bbprice = 0
                 bsprice = 0
+                buyercount = 0
+                buyerunits = 0
+                sellercount = 0
+                sellerunits = 0
+                
+                items = browser.createAction(CommSec.STOCK_DETAILS_ITEM_SINGLE_FIELD)._find_all()
+                for i in range(0, len(items)):
+                    ih = items[i].get_attribute('innerHTML')
+                    soup = BeautifulSoup(ih, 'html.parser')
+                    soup.tooltip.span.span.span.next_sibling.clear()
+                    fieldname = soup.tooltip.get_text()
+                    value = soup.span.next_sibling.get_text()
+                    if value == '-':
+                        value = '0'
+                    
+                    value = value.replace(',', '')
+
+                    if fieldname == 'Trades':
+                        tradevalue = int(value) 
+         
+                items = browser.createAction(CommSec.STOCK_DETAILS_ITEM)._find_all()
+                
                 for i in range(0, len(items)):
                     ih = items[i].get_attribute('innerHTML')
                     soup = BeautifulSoup(ih, 'html.parser')
@@ -179,40 +187,67 @@ class CommSecExtractor:
                         name = ns[0].strip()
                         value = vs[0].strip().replace(',','').replace('-', '0').replace('$', '')
                         if name == 'Bid':
-                            bbprice = np.float128(value)
+                            bbprice = np.float64(value)
                         elif name == 'Offer':
-                            bsprice = np.float128(value)
-                
+                            bsprice = np.float64(value)
                             
-#                     else:
-#                         stock_summary[name] = value
-                buyercount = 0
-                buyerunits = 0
+                    else:
+                        value = value.strip().replace(',','').replace('-', '0').replace('$', '')
+                        if name == 'Open':
+                            openprice = np.float64(value)
+                        elif name == 'High':
+                            hightprice = np.float64(value)
+                        elif name == 'Low':
+                            lowprice = np.float64(value)
+
                 if bbprice > 0:
                     buyercount, buyerunits = self.getOBSideSummary(browser.createAction(CommSec.MD_SUMMARY_BUYERS).get_text())
-                
-                sellercount = 0
-                sellerunits = 0
+
                 if bsprice > 0:
                     sellercount, sellerunits = self.getOBSideSummary(browser.createAction(CommSec.MD_SUMMARY_SELLERS).get_text())
+
+                df = pd.DataFrame({'Timestamp':[datetime.datetime.now().isoformat()], 
+                                   'Buyers_count':[buyercount], 
+                                   'Buyers_units':[buyerunits], 
+                                   'Sellers_count':[sellercount], 
+                                   'Sellers_units':[sellerunits], 
+                                   'Trades': [tradevalue],
+                                   'Seccode': [sec],
+                                   'Last':[lastprice],
+                                   'Open':[openprice],
+                                   'High':[hightprice],
+                                   'Low':[lowprice]  
+                                 })
+                                
+                df = df.set_index('Timestamp')
+                df.index = pd.to_datetime(df.index)
                 
-                secdata = rundata['stocks'][sec]['ad']
-                with secdata._lock:
-                    df = pd.DataFrame({'Timestamp':[datetime.datetime.now().isoformat()], 
-                                       'Buyers_count':[buyercount], 
-                                       'Buyers_units':[buyerunits], 
-                                       'Sellers_count':[sellercount], 
-                                       'Sellers_units':[sellerunits], 
-                                       'Trades': [tradevalue] 
-                                     })
-                    secdata.set('df', df)
+                items = browser.createAction(CommSec.ORDER_BOOK)._find_all()
+                hasOBLevels = False
+                for i in range(0, len(items)):
+                    ih = items[i].get_attribute('innerHTML')
+                    soup = BeautifulSoup(ih, 'html.parser')
+                    tds = soup.find_all('td')
+                    dfobl = pd.DataFrame()
+                    dfobl =  dfobl.append(df)
+                    dfobl['Level'] = i
+                    dfobl['BuySideNumber'] = tds[0].get_text()
+                    dfobl['BuySideQty'] = tds[1].get_text()
+                    dfobl['BuySidePrice'] = tds[2].get_text()
+                    dfobl['SellSideNumber'] = tds[5].get_text()
+                    dfobl['SellSideQty'] = tds[4].get_text()
+                    dfobl['SellSidePrice'] = tds[3].get_text()
+                    with selected_sec_data._lock:#POSSIBLE DEADLOCK
+                        selected_sec_data._value['df'] = selected_sec_data._value['df'].append(dfobl)
                     
-                    dfs = rundata['stocks'][sec]['dtstore'].orderbook_data
-                    rundata['stocks'][sec]['dtstore'].orderbook_data = dfs.append(df)
+                    hasOBLevels = True
                 
-                    print(rundata['stocks'][sec]['dtstore'].orderbook_data.to_string())
-                    outfilename = 'price_out_' + sec + ".csv"
-                    rundata['stocks'][sec]['dtstore'].orderbook_data.to_csv(outfilename)
+                
+                if hasOBLevels == False:
+                    with selected_sec_data._lock:
+                        selected_sec_data._value['df'] = selected_sec_data._value['df'].append(df)
+#                     outfilename = 'price_out_' + sec + ".csv"
+#                     rundata['stocks'][sec]['dtstore'].orderbook_data.to_csv(outfilename)
                     
                 
 #                 if tradevalue > 0:
@@ -326,7 +361,7 @@ rundata = [
 #                 }
 #             }
           ]   
-max_threads = 8
+max_threads = 2
 rundata_loaded = []
 for i in range(0, max_threads):
     rundata_loaded.append(  {
@@ -376,6 +411,10 @@ while True:
       
     for t in main_threads:
         t.join(3)
+        with selected_sec_data._lock:
+            print(selected_sec_data._value['df'].to_string())
+            selected_sec_data._value['df'].to_csv("all_data.csv")
+            
         if t.is_alive() == False:
             jc = jc + 1
             if jc == 2:
