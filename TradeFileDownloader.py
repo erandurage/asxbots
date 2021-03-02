@@ -20,7 +20,7 @@ import threading
 from pathlib import Path
 import os 
 
-
+pd.set_option('display.float_format', lambda x: '%.12f' % x)
 # seclist = ["RAN", "AVZ", "ECS", "VMS", "ANA", "MLX", "BMN", "VAL", "ASN", "EM1", "HCH", "IPT", "BGL", "MNS", "CRL", "ADO", "VIC", "EFE", "SHE", "PEN", "CAD", "DOU", "IBX", "ACW", "MGT", "TSC", "BCN", "PRM", "HSC", "ADV", "AGE", "MHC", "MSR", "AUZ", "RBR", "SRZ", "NPM", "GGG", "FPL", "NWE", "LKE", "MBK", "RFX", "BOE", "AGY", "SVL", "PDN", "PCL", "GGX", "ELT", "NTU", "CXO", "BUY", "QFY", "FRX", "CCA", "ICI", "DCC", "MCT", "VML", "AO1", "BRK", "HWK", "GTG", "GMR", "SYA", "LSR", "AOA", "HLX", "RNU", "SI6", "VPR", "IOU", "DW8", "IXR", "SRN", "ASP", "SCU", "LRS", "BPH", "CGB", "ARE", "ESH", "OEX", "ROG", "ANL", "QPM", "OAR", "CM8", "ANW", "9SP", "T3D", "MAY", "CLZ", "GLV", "CCE", "PUR", "SHO", "FGO", "ADX", "MXC", "XST", "JAT", "PWN", "88E", "WOO", "CRO", "FFG", "UUV", "PRL", "CI1"]
 # seclist = [ "ADX", "MXC", "XST", "JAT", "PWN", "88E", "WOO", "CRO", "FFG", "UUV", "PRL", "CI1"]
 
@@ -111,6 +111,63 @@ import os
 selected_sec_data = AtomicDictionary()
 selected_sec_data.set('df', pd.DataFrame())
 
+def calcBuySide(dfnew, dfold, side):
+    otherside = ''
+    if side == 'B':
+        otherside = 'S'
+    elif side == 'S':
+        otherside = 'B'
+    else:
+        raise ValueError("Invalid side " + side)
+    
+    dfnew = dfnew.drop(columns=[otherside+'C', otherside+'U',otherside+'P'])
+    
+
+    
+    dfold[side + 'Pp'] = dfold[side + 'P']
+    dfnew[side + 'Pd'] = dfnew[side + 'P']
+    
+    dfold = dfold.set_index(side + 'P')
+    dfnew = dfnew.set_index(side + 'P')
+    
+    
+    dfnew[side + 'Pp'] = dfold[side + 'Pp']
+    dfnew[side + 'Up'] = dfold[side + 'U']
+    dfnew[side + 'Cp'] = dfold[side + 'C']
+    
+
+    deln = 0
+    for index, row in dfnew[::-1].iterrows():
+        if np.isnan(row[side + 'Pp']) != True:
+            break
+        deln += 1
+        
+    
+    is_NaN = dfnew.isnull()
+    row_has_NaN = is_NaN.any(axis=1)
+    rows_with_NaN = dfnew[row_has_NaN]
+
+    dfnew = dfnew.fillna(0)
+
+    dfnew.to_csv("out_data.csv")
+    dfnew[side + 'Vd'] = dfnew[side + 'Pd']* dfnew[side + 'U']
+    dfnew[side + 'Vp'] = dfnew[side + 'Pp']* dfnew[side + 'Up']
+    dfnew[side + 'Vdiff'] = dfnew[side + 'Vd'] - dfnew[side + 'Vp']
+    dfnew[side + 'Cdiff'] = dfnew[side + 'C'] - dfnew[side + 'Cp']
+    
+    weight_start = 1.6
+    weight_step = 0.1
+    weights = []
+    for i in range(0, len(dfnew.index)):
+        weights.append(weight_start - i*weight_step)
+    dfnew['w'] = weights
+    
+    dfnew[side + 'w'] = dfnew[side + 'Vdiff']* dfnew[side + 'Cdiff'] * dfnew['w']
+
+
+    dfnew.drop(dfnew.tail(deln).index, inplace = True) 
+    return dfnew[side + 'w'].sum()
+
 class CommSecExtractor:        
     def getOBSideSummary(self,str):
         astr = str.split('for')
@@ -132,9 +189,13 @@ class CommSecExtractor:
         browser.createAction(CommSec.PASSWORD).send_keys(COMMSEC_PASSWORD).send_keys(Keys.RETURN)
         print(browser.createAction(CommSec.ACCOUNT_DETAILS).get_text())
         
+        thread_local_data = {}
+        
         while True:
 
             for sec in rundata['stocks']:
+                if sec not in thread_local_data:
+                    thread_local_data[sec] = {'obold': None, 'obnew': None}
 #                 print("Doing work for " + sec)
                 browser.openTab(CommSec.SECURITY_PARTIAL_URL.replace('___', sec))
                 browser.switchToTab(1)
@@ -224,6 +285,8 @@ class CommSecExtractor:
                 
                 items = browser.createAction(CommSec.ORDER_BOOK)._find_all()
                 hasOBLevels = False
+                curOB = pd.DataFrame()
+                obls = []
                 for i in range(0, len(items)):
                     ih = items[i].get_attribute('innerHTML')
                     soup = BeautifulSoup(ih, 'html.parser')
@@ -231,21 +294,45 @@ class CommSecExtractor:
                     dfobl = pd.DataFrame()
                     dfobl =  dfobl.append(df)
                     dfobl['Level'] = i
-                    dfobl['BuySideNumber'] = tds[0].get_text()
-                    dfobl['BuySideQty'] = tds[1].get_text()
-                    dfobl['BuySidePrice'] = tds[2].get_text()
-                    dfobl['SellSideNumber'] = tds[5].get_text()
-                    dfobl['SellSideQty'] = tds[4].get_text()
-                    dfobl['SellSidePrice'] = tds[3].get_text()
-                    with selected_sec_data._lock:#POSSIBLE DEADLOCK
-                        selected_sec_data._value['df'] = selected_sec_data._value['df'].append(dfobl)
-                    
+                    dfobl['BC'] = np.float64(tds[0].get_text().strip().replace(',','').replace('-', '0').replace('$', ''))
+                    dfobl['BU'] = np.float64(tds[1].get_text().strip().replace(',','').replace('-', '0').replace('$', ''))
+                    dfobl['BP'] = np.float64(tds[2].get_text().strip().replace(',','').replace('-', '0').replace('$', ''))
+                    dfobl['SC'] = np.float64(tds[5].get_text().strip().replace(',','').replace('-', '0').replace('$', ''))
+                    dfobl['SU'] = np.float64(tds[4].get_text().strip().replace(',','').replace('-', '0').replace('$', ''))
+                    dfobl['SP'] = np.float64(tds[3].get_text().strip().replace(',','').replace('-', '0').replace('$', ''))
+
+#                     with selected_sec_data._lock:#POSSIBLE DEADLOCK
+#                         selected_sec_data._value['df'] = selected_sec_data._value['df'].append(dfobl)
+                    obls.append(dfobl)
+                    curOB = curOB.append(dfobl, ignore_index=True)
                     hasOBLevels = True
+                    
                 
-                
+
+                        
                 if hasOBLevels == False:
                     with selected_sec_data._lock:
                         selected_sec_data._value['df'] = selected_sec_data._value['df'].append(df)
+                else:
+                    curOB = curOB.drop(columns=['Level','Buyers_count', 'Buyers_units', 'Sellers_count', 'Sellers_units', 'Trades', 'Seccode', 'Last', 'Open', 'High', 'Low'])
+#                     print(curOB)
+                        
+                    thread_local_data[sec]['obold'] = thread_local_data[sec]['obnew']
+                    thread_local_data[sec]['obnew'] = pd.DataFrame().append(curOB)
+                     
+                    if thread_local_data[sec]['obold'] is not None:
+                        buyweight = calcBuySide(thread_local_data[sec]['obnew'], thread_local_data[sec]['obold'], 'B')
+                        sellweight = calcBuySide(thread_local_data[sec]['obnew'], thread_local_data[sec]['obold'], 'S')
+                        
+
+                        with selected_sec_data._lock:
+#                             for dfobl in obls:
+                            df['BuySideWeight'] = buyweight
+                            df['SellSideWeight'] = sellweight
+                            df['BuySellWeightDiff'] = buyweight - sellweight
+                            selected_sec_data._value['df'] = selected_sec_data._value['df'].append(df)
+                            
+#                         print(selected_sec_data)
 #                     outfilename = 'price_out_' + sec + ".csv"
 #                     rundata['stocks'][sec]['dtstore'].orderbook_data.to_csv(outfilename)
                     
@@ -254,7 +341,7 @@ class CommSecExtractor:
 #                     browser.createAction(CommSec.COURSE_OF_SALES).click()
 #                     browser.createAction(CommSec.DOWNLOAD_TRADES).click()
                 browser.closeCurrentTab()
-
+            time.sleep(2)
         browser.close()
         
 class StockDataStore:
@@ -361,7 +448,7 @@ rundata = [
 #                 }
 #             }
           ]   
-max_threads = 2
+max_threads = 1
 rundata_loaded = []
 for i in range(0, max_threads):
     rundata_loaded.append(  {
@@ -405,6 +492,7 @@ t.start()
  
 jc = 0
 stop = False
+
 while True:
     if stop == True:
         break
@@ -412,8 +500,9 @@ while True:
     for t in main_threads:
         t.join(3)
         with selected_sec_data._lock:
-            print(selected_sec_data._value['df'].to_string())
-            selected_sec_data._value['df'].to_csv("all_data.csv")
+            print(selected_sec_data._value['df'])
+            selected_sec_data._value['df'] = pd.DataFrame()
+#             selected_sec_data._value['df'].to_csv("all_data.csv")
             
         if t.is_alive() == False:
             jc = jc + 1
