@@ -11,7 +11,7 @@ from Password import *
 from CommSecDefs import CommSec
 import pandas as pd
 import numpy as np
-from test import test_selectors
+from lxml.html.builder import DFN
 PRICE_MUL_FACTOR = 1000000
 import datetime 
 from scipy.signal import argrelextrema
@@ -44,11 +44,21 @@ def calcBuySide(dfnew, dfold, side):
     dfnew[side + 'Up'] = dfold[side + 'U']
     dfnew[side + 'Cp'] = dfold[side + 'C']
     
+    
+    print(dfnew)
+    deln = 0
+    for index, row in dfnew.iterrows():
+        if np.isnan(row[side + 'Pp']) != True:
+            break
+        print(row[side + 'Pp'],np.isnan(row[side + 'Pp']))
+        deln += 1
+    if side == 'S':
+        print("Sell side check " + str(deln))
+#     dfnew =dfnew[:-deln]
     is_NaN = dfnew.isnull()
     row_has_NaN = is_NaN.any(axis=1)
     rows_with_NaN = dfnew[row_has_NaN]
-    print(rows_with_NaN['Level'])
-    print(dfnew)
+
     dfnew = dfnew.fillna(0)
      
     dfnew[side + 'Vd'] = dfnew[side + 'Pd']* dfnew[side + 'U']
@@ -69,7 +79,26 @@ def calcBuySide(dfnew, dfold, side):
 
 df1 = pd.read_csv("ob1.csv")
 df2 = pd.read_csv("ob2.csv")
-
+ 
 print(calcBuySide(df2, df1, 'B'))
 print(calcBuySide(df2, df1, 'S'))
+
+# a = pd.DataFrame({'a': [0,1,2,3,5,6,7,10], 'b':[100,200,300,301,400,500,600,800]})
+# b = pd.DataFrame({'a': [1,2,4,5,6,8,9], 'b':[100,200,300,400,500,600,700]})
+# a = a.set_index('a')
+# b = b.set_index('a')
+# 
+# a['bb'] = b['b']
+# print(a)
+# print("---")
+# deln = 0
+# for index, row in a[::-1].iterrows():
+#     
+#     if np.isnan(row['bb']) != True:
+#         break
+#     print(row['b'], row['bb'],np.isnan(row['bb']))
+#     deln += 1
+# 
+# a =a[:-deln]
+# print(a)
 
