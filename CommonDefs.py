@@ -1,4 +1,5 @@
 class Fields:
+
     NAME = 'NAME'
     EXCHANGE_CODE = 'EXCHANGE_CODE'
     SECURITY_CODE = 'SECURITY_CODE'

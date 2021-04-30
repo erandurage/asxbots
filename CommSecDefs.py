@@ -1,4 +1,5 @@
 class CommSec:
+
     HOME_URL = 'https://www2.commsec.com.au/'
     SECURITY_PARTIAL_URL = 'https://www2.commsec.com.au/quotes/summary?stockCode=___&exchangeCode=ASX'
     CLIENT_ID = '//input[@id="ctl00_cpContent_txtLogin"]'
